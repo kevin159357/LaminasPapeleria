@@ -151,3 +151,6 @@
 .folder-card--readonly .folder-card__main:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 .folder-card--readonly .folder-card__main:active { background: #eef2ff; }
 #clientFoldersScreen .section-heading { margin-bottom: 18px; }
+
+/* Marca visible para reconocer un despliegue nuevo y verificar caché */
+.version-chip { display:inline-block; margin-left:.4rem; padding:.12rem .45rem; border-radius:999px; background:#e7efff; color:#1754b8; font-size:.7rem; font-weight:800; letter-spacing:0; vertical-align:middle; }

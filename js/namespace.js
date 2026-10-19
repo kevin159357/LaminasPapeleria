@@ -6,7 +6,7 @@
 
   const App = window.InventoryApp = window.InventoryApp || {};
 
-  App.VERSION = '1.2.0';
+  App.VERSION = '1.2.1';
   App.DB_NAME = 'MiInventarioDB';
   App.DB_VERSION = 3;
   App.DEFAULT_SETTINGS = {
