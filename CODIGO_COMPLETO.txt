@@ -1,6 +1,10 @@
-================================================================================
+CÓDIGO ACTUAL V1.2.0 – REFERENCIA. NO ES UN ARCHIVO PARA ABRIR COMO APP.
+Los archivos operativos están separados en index.html, css/ y js/.
+
+
+==================================================================
 index.html
-================================================================================
+==================================================================
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -99,23 +103,48 @@ index.html
             <input id="productSearchInput" type="search" placeholder="Buscar por nombre o código…" autocomplete="off">
             <button class="search-clear" type="button" data-action="clear-product-search" aria-label="Limpiar búsqueda">✕</button>
           </label>
-          <select id="productSortSelect" class="select-control" aria-label="Ordenar productos">
-            <option value="name-asc">Nombre A-Z</option>
-            <option value="name-desc">Nombre Z-A</option>
-            <option value="stock-desc">Mayor stock</option>
-            <option value="stock-asc">Menor stock</option>
-            <option value="updated-desc">Última modificación</option>
-          </select>
+          <p class="order-hint">☰ Mantén pulsado el controlador de una lámina y arrástrala para cambiar su posición.</p>
         </div>
         <div id="productGrid" class="product-grid"></div>
       </main>
     </div>
 
-    <div id="clientScreen" class="screen" hidden>
+    <div id="clientFoldersScreen" class="screen" hidden>
       <header class="topbar topbar--sticky">
         <div>
-          <p class="eyebrow">Modo cliente</p>
-          <h1 id="clientFolderTitle">Productos</h1>
+          <p class="eyebrow">Modo cliente · Solo visualización</p>
+          <h1>Mostrario de carpetas</h1>
+        </div>
+        <button class="icon-btn" title="Entrar como administrador" aria-label="Entrar como administrador" data-action="client-admin-unlock">🔒</button>
+      </header>
+      <main class="content">
+        <section class="section-block">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Explorar</p>
+              <h2>Todas las carpetas</h2>
+            </div>
+          </div>
+          <div class="toolbar">
+            <label class="search-field">
+              <span>🔎</span>
+              <input id="clientFolderSearchInput" type="search" placeholder="Buscar carpeta…" autocomplete="off">
+              <button class="search-clear" type="button" data-action="clear-client-folder-search" aria-label="Limpiar búsqueda">✕</button>
+            </label>
+          </div>
+          <div id="clientFolderGrid" class="folder-grid folder-grid--client"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="clientScreen" class="screen" hidden>
+      <header class="topbar topbar--sticky">
+        <div class="topbar__leading">
+          <button class="icon-btn" data-action="back-client-folders" aria-label="Volver a carpetas" title="Volver a carpetas">←</button>
+          <div>
+            <p class="eyebrow">Modo cliente · Solo visualización</p>
+            <h1 id="clientFolderTitle">Productos</h1>
+          </div>
         </div>
         <button class="icon-btn" title="Entrar como administrador" aria-label="Entrar como administrador" data-action="client-admin-unlock">🔒</button>
       </header>
@@ -135,7 +164,8 @@ index.html
   <div id="modalRoot" class="modal-root" aria-live="assertive"></div>
   <div id="toastRoot" class="toast-root" aria-live="polite"></div>
 
-  <input id="restoreFileInput" type="file" accept="application/json,.json" hidden>
+  <input id="restoreFileInput" type="file" accept=".json,.zip,application/json,application/zip" multiple hidden>
+  <input id="verifyBackupFileInput" type="file" accept=".zip,application/zip" multiple hidden>
 
   <script src="js/namespace.js"></script>
   <script src="js/database.js"></script>
@@ -144,14 +174,15 @@ index.html
   <script src="js/products.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/backup.js"></script>
+  <script src="js/backup-zip.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
 
 
-================================================================================
+==================================================================
 css/styles.css
-================================================================================
+==================================================================
 :root {
   --bg: #f3f6fb;
   --surface: #ffffff;
@@ -279,9 +310,9 @@ img { display: block; max-width: 100%; }
 }
 
 
-================================================================================
+==================================================================
 css/components.css
-================================================================================
+==================================================================
 .btn {
   min-height: var(--tap);
   border: 0;
@@ -400,10 +431,46 @@ css/components.css
   .folder-card__actions { flex-direction: row; position: absolute; right: 14px; top: 14px; }
 }
 
+/* Mi Inventario 1.1: imagen completa, rotación, reportes y orden táctil */
+.product-image-wrap { display:block; width:100%; padding:0; border:0; text-align:initial; cursor:zoom-in; }
+.product-image--rotated { object-fit:contain; transform:rotate(var(--rotation)) scale(var(--image-scale)); }
+.product-reorder { display:flex; justify-content:flex-end; margin-top:12px; }
+.reorder-handle { width:100%; min-height:42px; border:1px dashed #b3b8ca; border-radius:12px; background:#f7f8ff; color:#344054; font-weight:800; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+.product-card--dragging { opacity:.75; outline:3px solid var(--primary); box-shadow:var(--shadow-md); }
+.order-hint { margin:0; color:var(--muted); font-size:.82rem; flex:1 1 100%; }
+.rotation-controls { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.rotation-controls .btn { min-height:46px; padding-inline:8px; font-size:.85rem; }
+.image-preview img { object-fit:contain; }
+.image-lightbox { position:fixed; inset:0; z-index:3500; background:#090d18; color:#fff; display:flex; flex-direction:column; }
+.image-lightbox__bar { min-height:62px; padding:calc(8px + env(safe-area-inset-top)) 16px 9px; display:flex; justify-content:space-between; align-items:center; gap:14px; background:#111827; }
+.image-lightbox__bar strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.image-lightbox__close { flex:0 0 46px; height:46px; border:0; border-radius:13px; background:#30394c; color:#fff; font-size:1.25rem; }
+.image-lightbox__stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; padding-bottom:env(safe-area-inset-bottom); }
+.image-lightbox__stage img { display:block; max-width:none; max-height:none; object-fit:contain; }
+.stat-card--interactive { width:100%; text-align:left; font:inherit; color:inherit; cursor:pointer; }
+.stat-card--interactive:focus-visible { outline:3px solid var(--primary); }
+.stock-report-group { border:1px solid var(--border); border-radius:13px; margin-top:12px; overflow:hidden; }
+.stock-report-group summary { padding:15px; display:flex; justify-content:space-between; gap:8px; background:var(--surface-2); cursor:pointer; }
+.stock-report-group summary strong { color:var(--primary); }
+.stock-report-list { padding:0 13px; }
+.stock-report-row { padding:12px 0; display:flex; justify-content:space-between; align-items:center; gap:12px; border-top:1px solid var(--border); }
+.stock-report-row div { min-width:0; overflow-wrap:anywhere; }
+.stock-report-row small { display:block; margin-top:3px; color:var(--muted); }
+.stock-report-row .stock-badge { white-space:nowrap; }
+.backup-status { padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--surface-2); font-size:.9rem; overflow-wrap:anywhere; }
+.backup-actions { display:grid; gap:10px; }
 
-================================================================================
+/* Mostrario para clientes: navegación libre entre carpetas, solo lectura */
+.folder-card--readonly { grid-template-columns: 1fr; padding: 0; }
+.folder-card--readonly .folder-card__main { padding: 20px; border-radius: inherit; }
+.folder-card--readonly .folder-card__main:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.folder-card--readonly .folder-card__main:active { background: #eef2ff; }
+#clientFoldersScreen .section-heading { margin-bottom: 18px; }
+
+
+==================================================================
 js/namespace.js
-================================================================================
+==================================================================
 // ========================================
 // NAMESPACE GLOBAL Y UTILIDADES
 // ========================================
@@ -412,9 +479,9 @@ js/namespace.js
 
   const App = window.InventoryApp = window.InventoryApp || {};
 
-  App.VERSION = '1.0.1';
+  App.VERSION = '1.2.0';
   App.DB_NAME = 'MiInventarioDB';
-  App.DB_VERSION = 2;
+  App.DB_VERSION = 3;
   App.DEFAULT_SETTINGS = {
     appName: 'Mi Inventario',
     lowStockLimit: 5,
@@ -518,9 +585,9 @@ js/namespace.js
 })();
 
 
-================================================================================
+==================================================================
 js/database.js
-================================================================================
+==================================================================
 // ========================================
 // BASE DE DATOS - INDEXEDDB
 // ========================================
@@ -592,6 +659,10 @@ js/database.js
           database.createObjectStore('images', { keyPath: 'id' });
         }
 
+        if (!database.objectStoreNames.contains('restoreStageImages')) {
+          database.createObjectStore('restoreStageImages', { keyPath: 'id' });
+        }
+
         if (!database.objectStoreNames.contains('config')) {
           database.createObjectStore('config', { keyPath: 'key' });
         }
@@ -621,6 +692,64 @@ js/database.js
     const result = await requestToPromise(tx.objectStore(storeName).get(key));
     await transactionDone(tx);
     return result;
+  }
+
+  async function getAllKeys(storeName) {
+    const tx = getDb().transaction(storeName, 'readonly');
+    const keys = await requestToPromise(tx.objectStore(storeName).getAllKeys());
+    await transactionDone(tx);
+    return keys;
+  }
+
+  // Lee solo los metadatos: evita cargar simultáneamente miles de imágenes.
+  async function getImageInfoList() {
+    const tx = getDb().transaction('images', 'readonly');
+    const store = tx.objectStore('images');
+    return new Promise((resolve, reject) => {
+      const result = [];
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error || new Error('Error al consultar imágenes.'));
+      tx.onabort = () => reject(tx.error || new Error('Consulta de imágenes cancelada.'));
+      const cursor = store.openCursor();
+      cursor.onsuccess = () => {
+        const current = cursor.result;
+        if (!current) return;
+        const item = current.value;
+        result.push({ id: item.id, size: item.blob?.size || 0,
+          type: item.type || item.blob?.type || 'application/octet-stream',
+          name: item.name || 'imagen', createdAt: item.createdAt || '' });
+        current.continue();
+      };
+    });
+  }
+
+  async function putMany(storeName, values) {
+    const tx = getDb().transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    for (const value of values) store.put(value);
+    await transactionDone(tx);
+  }
+
+  // Durante la restauración ZIP, todo se prepara en un almacén temporal.
+  // La base real solo se sustituye una vez que se han validado todas las partes.
+  async function commitStagedRestore(payload) {
+    const tx = getDb().transaction(['folders', 'products', 'images', 'config', 'restoreStageImages'], 'readwrite');
+    const folders = tx.objectStore('folders');
+    const products = tx.objectStore('products');
+    const images = tx.objectStore('images');
+    const config = tx.objectStore('config');
+    const staged = tx.objectStore('restoreStageImages');
+    folders.clear(); products.clear(); images.clear(); config.clear();
+    for (const item of payload.folders) folders.put(item);
+    for (const item of payload.products) products.put(item);
+    config.put({ key: 'settings', value: payload.settings });
+    const cursor = staged.openCursor();
+    cursor.onsuccess = () => {
+      const row = cursor.result;
+      if (row) { images.put(row.value); row.continue(); }
+      else staged.clear();
+    };
+    await transactionDone(tx);
   }
 
   async function getAll(storeName) {
@@ -727,6 +856,10 @@ js/database.js
     open,
     get,
     getAll,
+    getAllKeys,
+    getImageInfoList,
+    putMany,
+    commitStagedRestore,
     put,
     add,
     remove,
@@ -740,9 +873,9 @@ js/database.js
 })();
 
 
-================================================================================
+==================================================================
 js/ui.js
-================================================================================
+==================================================================
 // ========================================
 // INTERFAZ, MODALES Y TOASTS
 // ========================================
@@ -756,7 +889,7 @@ js/ui.js
   }
 
   function showScreen(screenId) {
-    ['loadingScreen', 'startScreen', 'adminScreen', 'folderInventoryScreen', 'clientScreen']
+    ['loadingScreen', 'startScreen', 'adminScreen', 'folderInventoryScreen', 'clientFoldersScreen', 'clientScreen']
       .forEach((id) => {
         const node = el(id);
         if (!node) return;
@@ -891,9 +1024,9 @@ js/ui.js
 })();
 
 
-================================================================================
+==================================================================
 js/folders.js
-================================================================================
+==================================================================
 // ========================================
 // CARPETAS
 // ========================================
@@ -965,10 +1098,6 @@ js/folders.js
 
     await App.db.remove('folders', id);
 
-    if (App.state.settings.clientFolderId === id) {
-      App.state.settings.clientFolderId = null;
-      await App.db.setConfig('settings', App.state.settings);
-    }
   }
 
   function openCreateModal() {
@@ -1102,9 +1231,9 @@ js/folders.js
 })();
 
 
-================================================================================
+==================================================================
 js/products.js
-================================================================================
+==================================================================
 // ========================================
 // PRODUCTOS, IMÁGENES Y STOCK
 // ========================================
@@ -1128,24 +1257,117 @@ js/products.js
     return products.some((product) => product.id !== excludeId && product.codeKey === key);
   }
 
-  function validateImage(file) {
-    if (!file) return;
-    if (!file.type || !file.type.startsWith('image/')) throw new Error('Selecciona un archivo de imagen válido.');
-    if (file.size > MAX_IMAGE_BYTES) throw new Error('La imagen es demasiado grande. Máximo 8 MB.');
+  function getImageBlob(source) {
+    if (!source) return null;
+    if (source.blob instanceof Blob) return source.blob;
+    if (source instanceof Blob) return source;
+    return null;
   }
 
-  async function saveImage(file) {
-    if (!file) return null;
-    validateImage(file);
+  function validateImage(source) {
+    if (!source) return;
+    const blob = getImageBlob(source);
+    if (!blob) throw new Error('Selecciona un archivo de imagen válido.');
+    const type = source.type || blob.type || '';
+    if (!type || !type.startsWith('image/')) throw new Error('Selecciona un archivo de imagen válido.');
+    if (blob.size > MAX_IMAGE_BYTES) throw new Error('La imagen es demasiado grande. Máximo 8 MB.');
+    if (blob.size <= 0) throw new Error('La imagen seleccionada está vacía o no se pudo leer.');
+  }
+
+  function blobToArrayBuffer(blob) {
+    if (blob && typeof blob.arrayBuffer === 'function') {
+      return blob.arrayBuffer();
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('No se pudo leer la imagen seleccionada.'));
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+
+  // En algunos móviles Android, el File recibido desde el selector de fotos
+  // puede apuntar a un recurso temporal del sistema. IndexedDB puede rechazarlo
+  // con "Failed to write blobs (invalid blob)". Para evitarlo, copiamos sus
+  // bytes a memoria y creamos un Blob nuevo y estable antes de previsualizar
+  // o guardar la imagen.
+  async function prepareImage(source) {
+    if (!source) return null;
+    if (source.__inventoryPrepared && source.blob instanceof Blob) return source;
+
+    const originalBlob = getImageBlob(source);
+    validateImage(source);
+
+    let buffer;
+    try {
+      buffer = await blobToArrayBuffer(originalBlob);
+    } catch (error) {
+      console.error('Error al leer la imagen seleccionada:', error);
+      throw new Error('No se pudo leer la imagen. Prueba seleccionándola desde Galería o Archivos.');
+    }
+
+    if (!buffer || buffer.byteLength <= 0) {
+      throw new Error('No se pudo leer el contenido de la imagen.');
+    }
+
+    const type = source.type || originalBlob.type || 'image/jpeg';
+    const stableBlob = new Blob([buffer], { type });
+    if (stableBlob.size <= 0) throw new Error('No se pudo preparar la imagen para guardarla.');
+
+    return {
+      __inventoryPrepared: true,
+      blob: stableBlob,
+      type,
+      name: source.name || 'imagen',
+      size: stableBlob.size
+    };
+  }
+
+  async function saveImage(source) {
+    if (!source) return null;
+    const prepared = await prepareImage(source);
     const newImageId = App.utils.uid('image');
     await App.db.put('images', {
       id: newImageId,
-      blob: file,
-      type: file.type,
-      name: file.name || 'imagen',
+      blob: prepared.blob,
+      type: prepared.type,
+      name: prepared.name || 'imagen',
       createdAt: App.utils.now()
     });
     return newImageId;
+  }
+
+  function manualOrder(products) {
+    return [...products].sort((a, b) => {
+      const aSet = Number.isFinite(a.sortOrder), bSet = Number.isFinite(b.sortOrder);
+      if (aSet && bSet && a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      // Instalaciones antiguas: orden de ingreso, no alfabético.
+      return String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || String(a.id).localeCompare(String(b.id));
+    });
+  }
+
+  async function ensureFolderOrder(folderId) {
+    const rows = manualOrder(await listByFolder(folderId));
+    if (rows.some((p, index) => p.sortOrder !== index)) {
+      await App.db.putMany('products', rows.map((p, index) => ({ ...p, sortOrder: index })));
+    }
+    return rows;
+  }
+
+  async function setCustomOrder(folderId, orderedIds) {
+    const products = await listByFolder(folderId);
+    const originalIds = new Set(products.map((p) => p.id));
+    if (originalIds.size !== orderedIds.length || new Set(orderedIds).size !== orderedIds.length ||
+        !orderedIds.every((id) => originalIds.has(id))) {
+      throw new Error('El orden no coincide con los productos de la carpeta.');
+    }
+    const lookup = new Map(products.map((p) => [p.id, p]));
+    await App.db.putMany('products', orderedIds.map((id, index) => ({ ...lookup.get(id), sortOrder: index })));
+  }
+
+  function safeRotation(value) {
+    const rotation = Number(value);
+    return [0, 90, 180, 270].includes(rotation) ? rotation : 0;
   }
 
   async function create(folderId, data) {
@@ -1156,6 +1378,7 @@ js/products.js
     if (!code) throw new Error('El código no puede estar vacío.');
     if (await codeExists(folderId, code, null)) throw new Error('Ya existe un producto con ese código en esta carpeta.');
 
+    const existing = await ensureFolderOrder(folderId);
     const imageId = await saveImage(data.imageFile);
     const timestamp = App.utils.now();
     const product = {
@@ -1166,6 +1389,8 @@ js/products.js
       codeKey: App.utils.normalize(code),
       stock,
       imageId,
+      imageRotation: safeRotation(data.imageRotation),
+      sortOrder: existing.length,
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -1204,6 +1429,7 @@ js/products.js
       codeKey: App.utils.normalize(code),
       stock,
       imageId,
+      imageRotation: safeRotation(data.imageRotation ?? product.imageRotation),
       updatedAt: App.utils.now()
     };
 
@@ -1244,15 +1470,57 @@ js/products.js
     return App.utils.trackObjectUrl(URL.createObjectURL(image.blob));
   }
 
-  function sortProducts(products, sortValue) {
-    const result = [...products];
-    switch (sortValue) {
-      case 'name-desc': return result.sort((a, b) => b.name.localeCompare(a.name, 'es', { sensitivity: 'base' }));
-      case 'stock-desc': return result.sort((a, b) => b.stock - a.stock || a.name.localeCompare(b.name, 'es'));
-      case 'stock-asc': return result.sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name, 'es'));
-      case 'updated-desc': return result.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-      default: return result.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+  function sortProducts(products) {
+    return manualOrder(products);
+  }
+
+  async function openImageViewer(productId) {
+    const product = await get(productId);
+    if (!product || !product.imageId) {
+      App.ui.toast('⚠️ Esta lámina no tiene imagen.', 'warning');
+      return;
     }
+    const url = await loadImageUrl(product.imageId);
+    if (!url) throw new Error('No se pudo abrir la imagen.');
+    const rotation = safeRotation(product.imageRotation);
+    const overlay = document.createElement('section');
+    overlay.className = 'image-lightbox';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'Imagen ampliada');
+    overlay.innerHTML = `
+      <header class="image-lightbox__bar">
+        <strong>${App.utils.escapeHtml(product.name)}</strong>
+        <button type="button" class="image-lightbox__close" aria-label="Cerrar imagen">✕</button>
+      </header>
+      <div class="image-lightbox__stage"><img src="${url}" alt="${App.utils.escapeHtml(product.name)}"></div>
+    `;
+    const image = overlay.querySelector('img');
+    const stage = overlay.querySelector('.image-lightbox__stage');
+    const fitImage = () => {
+      const w = image.naturalWidth || 1, h = image.naturalHeight || 1;
+      const maxW = Math.max(1, stage.clientWidth - 20), maxH = Math.max(1, stage.clientHeight - 20);
+      const swap = rotation % 180 !== 0;
+      const factor = Math.min(maxW / (swap ? h : w), maxH / (swap ? w : h), 2);
+      image.style.width = `${Math.round(w * factor)}px`;
+      image.style.height = `${Math.round(h * factor)}px`;
+      image.style.transform = `rotate(${rotation}deg)`;
+    };
+    const close = () => {
+      window.removeEventListener('resize', fitImage);
+      document.removeEventListener('keydown', onKey);
+      overlay.remove();
+      try { URL.revokeObjectURL(url); } catch (_) {}
+      App.state.objectUrls.delete(url);
+    };
+    const onKey = (event) => { if (event.key === 'Escape') close(); };
+    image.addEventListener('load', fitImage, { once: true });
+    overlay.querySelector('button').addEventListener('click', close);
+    overlay.addEventListener('click', (event) => { if (event.target === stage) close(); });
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', fitImage);
+    document.body.appendChild(overlay);
+    overlay.querySelector('button').focus();
   }
 
   async function renderProducts(target, products, options) {
@@ -1269,9 +1537,9 @@ js/products.js
       card.className = `product-card ${status.key === 'out' ? 'product-card--out' : ''}`;
       card.dataset.productId = product.id;
       card.innerHTML = `
-        <div class="product-image-wrap" data-image-slot>
+        <button type="button" class="product-image-wrap" data-action="view-image" data-product-id="${product.id}" data-image-slot aria-label="Ver imagen completa de ${App.utils.escapeHtml(product.name)}">
           <div class="product-placeholder">🖼️</div>
-        </div>
+        </button>
         <div class="product-card__body">
           <h3>${App.utils.escapeHtml(product.name)}</h3>
           <div class="product-code">${App.utils.escapeHtml(product.code)}</div>
@@ -1280,6 +1548,7 @@ js/products.js
             <span class="stock-badge stock-badge--${status.key}">${status.label}</span>
           </div>
           ${options.isClient ? '' : `
+            <div class="product-reorder"><button type="button" class="reorder-handle" data-reorder-handle aria-label="Mantener pulsado para reordenar ${App.utils.escapeHtml(product.name)}">☰ Mover lámina</button></div>
             <div class="stock-stepper">
               <button type="button" data-action="stock-minus" data-product-id="${product.id}" aria-label="Restar stock">−</button>
               <strong>${product.stock}</strong>
@@ -1298,7 +1567,8 @@ js/products.js
         loadImageUrl(product.imageId).then((url) => {
           if (!url || !card.isConnected) return;
           const slot = card.querySelector('[data-image-slot]');
-          slot.innerHTML = `<img class="product-image" src="${url}" alt="${App.utils.escapeHtml(product.name)}">`;
+          const rotation = safeRotation(product.imageRotation);
+          slot.innerHTML = `<img class="product-image ${rotation ? 'product-image--rotated' : ''}" src="${url}" alt="${App.utils.escapeHtml(product.name)}" style="--rotation:${rotation}deg;--image-scale:${rotation % 180 ? '.72' : '1'}">`;
         }).catch((error) => console.error('Error al mostrar imagen:', error));
       }
     }
@@ -1314,7 +1584,12 @@ js/products.js
             <input id="productImageInput" type="file" accept="image/*">
             <p class="form-hint">Máximo recomendado: 8 MB.</p>
           </div>
-          <div id="productImagePreview" class="image-preview">${editing && product.imageId ? 'Imagen actual conservada si no eliges otra.' : 'Vista previa'}</div>
+          <div id="productImagePreview" class="image-preview">${editing && product.imageId ? 'Cargando imagen actual…' : 'Vista previa'}</div>
+          <div class="rotation-controls">
+            <button type="button" class="btn btn--secondary" data-rotate-left>↶ Girar izquierda</button>
+            <button type="button" class="btn btn--secondary" data-rotate-right>↷ Girar derecha</button>
+          </div>
+          <p class="form-hint">La rotación se guarda sin alterar la fotografía original.</p>
         </div>
         <div class="form-row">
           <label for="productNameInput">Nombre</label>
@@ -1354,29 +1629,84 @@ js/products.js
         const saveButton = modal.querySelector('[data-save-product]');
         modal.querySelector('[data-modal-cancel]').addEventListener('click', App.ui.closeModal);
 
-        imageInput.addEventListener('change', () => {
+        let preparedImage = null;
+        let imagePreparing = false;
+        let rotation = safeRotation(product?.imageRotation);
+        let previewUrl = null;
+        function refreshPreview() {
+          const img = preview.querySelector('img');
+          if (!img) return;
+          img.style.transform = `rotate(${rotation}deg) scale(${rotation % 180 ? 0.72 : 1})`;
+        }
+        if (product?.imageId) {
+          loadImageUrl(product.imageId).then((url) => {
+            if (!url || !modal.isConnected || preparedImage) return;
+            previewUrl = url;
+            preview.innerHTML = `<img src="${url}" alt="Imagen actual">`;
+            refreshPreview();
+          }).catch(console.error);
+        }
+        modal.querySelector('[data-rotate-left]').addEventListener('click', () => {
+          rotation = (rotation + 270) % 360;
+          refreshPreview();
+        });
+        modal.querySelector('[data-rotate-right]').addEventListener('click', () => {
+          rotation = (rotation + 90) % 360;
+          refreshPreview();
+        });
+
+        imageInput.addEventListener('change', async () => {
           const file = imageInput.files?.[0];
-          if (!file) return;
+          preparedImage = null;
+          if (!file) {
+            preview.textContent = product && product.imageId
+              ? 'Imagen actual conservada si no eliges otra.'
+              : 'Vista previa';
+            return;
+          }
+
           try {
-            validateImage(file);
-            const reader = new FileReader();
-            reader.onload = () => { preview.innerHTML = `<img src="${reader.result}" alt="Vista previa">`; };
-            reader.onerror = () => App.ui.toast('❌ No se pudo previsualizar la imagen', 'error');
-            reader.readAsDataURL(file);
+            imagePreparing = true;
+            preview.textContent = 'Preparando imagen…';
+            preparedImage = await prepareImage(file);
+            const dataUrl = await App.utils.blobToDataURL(preparedImage.blob);
+            preview.innerHTML = `<img src="${dataUrl}" alt="Vista previa">`;
+            refreshPreview();
           } catch (error) {
+            console.error('Error al preparar vista previa:', error);
+            preparedImage = null;
             imageInput.value = '';
-            App.ui.toast(`⚠️ ${error.message}`, 'warning');
+            preview.textContent = 'No se pudo cargar la imagen.';
+            App.ui.toast(`⚠️ ${error.message || 'No se pudo previsualizar la imagen'}`, 'warning');
+          } finally {
+            imagePreparing = false;
           }
         });
 
         form.addEventListener('submit', async (event) => {
           event.preventDefault();
-          const imageFile = imageInput.files?.[0] || null;
+
+          if (imagePreparing) {
+            App.ui.toast('⏳ Espera un momento mientras se prepara la imagen.', 'warning');
+            return;
+          }
+
+          const selectedRawFile = imageInput.files?.[0] || null;
+          if (selectedRawFile && !preparedImage) {
+            try {
+              preparedImage = await prepareImage(selectedRawFile);
+            } catch (error) {
+              App.ui.toast(`⚠️ ${error.message || 'No se pudo leer la imagen'}`, 'warning');
+              return;
+            }
+          }
+
           const data = {
             name: modal.querySelector('#productNameInput').value,
             code: modal.querySelector('#productCodeInput').value,
             stock: modal.querySelector('#productStockInput').value,
-            imageFile
+            imageFile: preparedImage,
+            imageRotation: rotation
           };
 
           try {
@@ -1424,6 +1754,9 @@ js/products.js
 
   App.products = {
     listByFolder,
+    ensureFolderOrder,
+    setCustomOrder,
+    openImageViewer,
     get,
     create,
     update,
@@ -1438,9 +1771,9 @@ js/products.js
 })();
 
 
-================================================================================
+==================================================================
 js/settings.js
-================================================================================
+==================================================================
 // ========================================
 // CONFIGURACIÓN Y CONTRASEÑA
 // ========================================
@@ -1455,7 +1788,6 @@ js/settings.js
       ...nextSettings,
       appName: String(nextSettings.appName ?? App.state.settings.appName).trim() || 'Mi Inventario',
       lowStockLimit: App.utils.clampInt(nextSettings.lowStockLimit ?? App.state.settings.lowStockLimit, 0, 999999),
-      clientFolderId: nextSettings.clientFolderId || null,
       autoClientMode: Boolean(nextSettings.autoClientMode)
     };
     await App.db.setConfig('settings', normalized);
@@ -1477,12 +1809,7 @@ js/settings.js
   }
 
   async function openSettingsModal() {
-    const folders = await App.folders.list();
     const settings = App.state.settings;
-    const folderOptions = [
-      '<option value="">— Sin carpeta asignada —</option>',
-      ...folders.map((folder) => `<option value="${folder.id}" ${settings.clientFolderId === folder.id ? 'selected' : ''}>${App.utils.escapeHtml(folder.name)}</option>`)
-    ].join('');
 
     App.ui.openModal({
       eyebrow: 'Administrador',
@@ -1505,19 +1832,17 @@ js/settings.js
 
           <div class="divider"></div>
           <h3 class="settings-title">Cliente</h3>
-          <div class="form-row">
-            <label for="settingsClientFolder">Carpeta visible para el cliente</label>
-            <select id="settingsClientFolder">${folderOptions}</select>
-          </div>
+          <p class="form-hint">El modo cliente muestra automáticamente todas las carpetas, sin permitir editarlas.</p>
           <label class="checkbox-row" for="settingsAutoClient">
-            <span><strong>Iniciar automáticamente en modo cliente</strong><br><span class="form-hint">Solo funciona si existe una carpeta asignada.</span></span>
+            <span><strong>Iniciar automáticamente en modo cliente</strong><br><span class="form-hint">Abre directamente el mostrario con todas las carpetas.</span></span>
             <input id="settingsAutoClient" type="checkbox" ${settings.autoClientMode ? 'checked' : ''}>
           </label>
 
           <div class="divider"></div>
           <h3 class="settings-title">Copia de seguridad</h3>
           <div class="stack">
-            <button class="btn btn--secondary btn--block" type="button" data-settings-backup>💾 Crear copia de seguridad</button>
+            <button class="btn btn--secondary btn--block" type="button" data-settings-backup>💾 Crear copia de seguridad ZIP por partes</button>
+            <button class="btn btn--secondary btn--block" type="button" data-settings-verify-backup>✅ Comprobar ZIP descargado (sin restaurar)</button>
             <button class="btn btn--secondary btn--block" type="button" data-settings-restore>📥 Restaurar copia de seguridad</button>
           </div>
 
@@ -1564,11 +1889,16 @@ js/settings.js
         });
 
         modal.querySelector('[data-settings-backup]').addEventListener('click', async () => {
-          try { await App.backup.download(); }
+          try { await App.backup.openZipBackupModal(); }
           catch (error) {
             console.error('Error al crear backup:', error);
             App.ui.toast('❌ No se pudo crear la copia de seguridad', 'error');
           }
+        });
+
+        modal.querySelector('[data-settings-verify-backup]').addEventListener('click', () => {
+          App.ui.closeModal();
+          App.backup.chooseVerifyFiles();
         });
 
         modal.querySelector('[data-settings-restore]').addEventListener('click', () => {
@@ -1604,7 +1934,6 @@ js/settings.js
             await saveSettings({
               appName: modal.querySelector('#settingsAppName').value,
               lowStockLimit: modal.querySelector('#settingsLowStock').value,
-              clientFolderId: modal.querySelector('#settingsClientFolder').value || null,
               autoClientMode: modal.querySelector('#settingsAutoClient').checked
             });
             App.ui.closeModal();
@@ -1630,9 +1959,9 @@ js/settings.js
 })();
 
 
-================================================================================
+==================================================================
 js/backup.js
-================================================================================
+==================================================================
 // ========================================
 // COPIA DE SEGURIDAD Y RESTAURACIÓN
 // ========================================
@@ -1807,9 +2136,19 @@ js/backup.js
     const input = App.ui.el('restoreFileInput');
     if (!input) return;
     input.addEventListener('change', async () => {
-      const file = input.files?.[0];
+      const files = Array.from(input.files || []);
       input.value = '';
-      if (file) await handleRestoreFile(file);
+      if (!files.length) return;
+      if (files.some((item) => /\.zip$/i.test(item.name))) {
+        try {
+          if (files.some((item) => !/\.zip$/i.test(item.name))) throw new Error('Selecciona solo los ZIP de un mismo respaldo.');
+          await App.backup.handleZipFiles(files);
+        } catch (error) {
+          console.error('Error al restaurar ZIP:', error);
+          App.ui.toast(`❌ ${error.message || 'No se pudo restaurar ZIP'}`, 'error');
+        }
+      } else if (files.length === 1) await handleRestoreFile(files[0]);
+      else App.ui.toast('⚠️ Selecciona un JSON, o todas las partes ZIP juntas.', 'warning');
     });
   }
 
@@ -1824,9 +2163,442 @@ js/backup.js
 })();
 
 
-================================================================================
+==================================================================
+js/backup-zip.js
+==================================================================
+// ========================================
+// RESPALDO ZIP EN PARTES, SIN BASE64
+// ZIP sin compresión: las fotografías JPEG/PNG ya están comprimidas.
+// Cada parte se construye sin concatenar las imágenes en una cadena gigante.
+// ========================================
+(function () {
+  'use strict';
+  const App = window.InventoryApp;
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const LIMIT = 32 * 1024 * 1024; // partes pequeñas para tablets
+  const MAX_ENTRIES = 180;
+  const table = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? (0xEDB88320 ^ (c >>> 1)) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  async function crc32(blob) {
+    let crc = 0xFFFFFFFF;
+    for (let offset = 0; offset < blob.size; offset += 1024 * 1024) {
+      const bytes = new Uint8Array(await blob.slice(offset, offset + 1024 * 1024).arrayBuffer());
+      for (let i = 0; i < bytes.length; i++) crc = table[(crc ^ bytes[i]) & 255] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function dosTimeDate() {
+    const date = new Date();
+    const time = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+    const stamp = ((Math.max(1980, date.getFullYear()) - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+    return [time, stamp];
+  }
+
+  async function zipParts(entries) {
+    const items = [];
+    const parts = [];
+    let position = 0;
+    const [time, date] = dosTimeDate();
+    for (const entry of entries) {
+      const name = encoder.encode(entry.path);
+      const blob = entry.blob;
+      if (blob.size > 0xFFFFFFFF) throw new Error('Una imagen supera el límite del formato ZIP.');
+      const checksum = await crc32(blob);
+      const local = new Uint8Array(30 + name.length);
+      const view = new DataView(local.buffer);
+      view.setUint32(0, 0x04034b50, true);
+      view.setUint16(4, 20, true);
+      view.setUint16(6, 0x0800, true); // nombres UTF-8
+      view.setUint16(8, 0, true); // sin compresión
+      view.setUint16(10, time, true);
+      view.setUint16(12, date, true);
+      view.setUint32(14, checksum, true);
+      view.setUint32(18, blob.size, true);
+      view.setUint32(22, blob.size, true);
+      view.setUint16(26, name.length, true);
+      local.set(name, 30);
+      parts.push(local, blob);
+      items.push({ name, size: blob.size, checksum, offset: position });
+      position += local.length + blob.size;
+    }
+    const centralOffset = position;
+    for (const item of items) {
+      const central = new Uint8Array(46 + item.name.length);
+      const view = new DataView(central.buffer);
+      view.setUint32(0, 0x02014b50, true);
+      view.setUint16(4, 20, true);
+      view.setUint16(6, 20, true);
+      view.setUint16(8, 0x0800, true);
+      view.setUint16(10, 0, true);
+      view.setUint16(12, time, true);
+      view.setUint16(14, date, true);
+      view.setUint32(16, item.checksum, true);
+      view.setUint32(20, item.size, true);
+      view.setUint32(24, item.size, true);
+      view.setUint16(28, item.name.length, true);
+      view.setUint32(42, item.offset, true);
+      central.set(item.name, 46);
+      parts.push(central);
+      position += central.length;
+    }
+    const end = new Uint8Array(22);
+    const view = new DataView(end.buffer);
+    view.setUint32(0, 0x06054b50, true);
+    view.setUint16(8, items.length, true);
+    view.setUint16(10, items.length, true);
+    view.setUint32(12, position - centralOffset, true);
+    view.setUint32(16, centralOffset, true);
+    parts.push(end);
+    return new Blob(parts, { type: 'application/zip' });
+  }
+
+  async function preparePlan() {
+    const [folders, products, infos] = await Promise.all([
+      App.db.getAll('folders'), App.db.getAll('products'), App.db.getImageInfoList()
+    ]);
+    const groups = [[]];
+    let groupBytes = 0;
+    for (const item of infos) {
+      if (!item.size) throw new Error(`La imagen ${item.id} está vacía o dañada.`);
+      let group = groups[groups.length - 1];
+      if (group.length && (groupBytes + item.size > LIMIT || group.length >= MAX_ENTRIES)) {
+        group = [];
+        groups.push(group);
+        groupBytes = 0;
+      }
+      item.part = groups.length;
+      group.push(item);
+      groupBytes += item.size;
+    }
+    return {
+      groups,
+      manifest: {
+        format: 'mi-inventario-zip-partes', version: 2,
+        backupId: App.utils.uid('respaldo'), appVersion: App.VERSION,
+        exportedAt: App.utils.now(), partCount: groups.length,
+        settings: { ...App.state.settings }, folders, products, images: infos
+      }
+    };
+  }
+
+  async function buildPart(plan, index) {
+    const partNo = index + 1;
+    const meta = index === 0 ? plan.manifest : {
+      format: plan.manifest.format, version: 2,
+      backupId: plan.manifest.backupId, part: partNo, partCount: plan.groups.length
+    };
+    const entries = [{
+      path: index === 0 ? 'inventario.json' : 'parte.json',
+      blob: new Blob([JSON.stringify(meta)], { type: 'application/json' })
+    }];
+    for (const info of plan.groups[index]) {
+      const row = await App.db.get('images', info.id);
+      if (!row || !(row.blob instanceof Blob)) throw new Error(`Falta la imagen ${info.id}.`);
+      if (row.blob.size !== info.size) throw new Error(`La imagen ${info.id} cambió durante el respaldo. Vuelve a empezar.`);
+      entries.push({ path: `imagenes/${encodeURIComponent(String(info.id))}.bin`, blob: row.blob });
+    }
+    return zipParts(entries);
+  }
+
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    // No revocar inmediatamente; Android a veces inicia la descarga después.
+    window.setTimeout(() => URL.revokeObjectURL(url), 120000);
+  }
+
+  async function openZipBackupModal() {
+    const plan = await preparePlan();
+    let nextPart = 0;
+    const date = new Date().toISOString().slice(0, 10);
+    App.ui.openModal({
+      eyebrow: 'Copia de seguridad segura',
+      title: 'Exportar inventario en ZIP',
+      bodyHtml: `
+        <p>La copia incluye carpetas, productos, stock, orden, rotación, imágenes y configuración.</p>
+        <div class="backup-status" id="backupStatus">
+          <strong>${plan.manifest.products.length} láminas</strong> · ${plan.manifest.images.length} imágenes ·
+          <strong>${plan.groups.length} archivo${plan.groups.length === 1 ? '' : 's'} ZIP</strong>.
+          <p><strong>Importante:</strong> descarga y conserva TODAS las partes en la misma carpeta.
+          No borres los datos originales hasta comprobar tu respaldo.</p>
+        </div>`,
+      footerHtml: `<button class="btn btn--secondary" type="button" data-zip-close>Cerrar</button>
+        <button class="btn btn--primary" type="button" data-zip-next>⬇️ Descargar parte 1 de ${plan.groups.length}</button>`,
+      closeOnBackdrop: false,
+      onReady(modal) {
+        const button = modal.querySelector('[data-zip-next]');
+        const status = modal.querySelector('#backupStatus');
+        modal.querySelector('[data-zip-close]').addEventListener('click', App.ui.closeModal);
+        button.addEventListener('click', async () => {
+          if (nextPart >= plan.groups.length) return;
+          const index = nextPart;
+          try {
+            App.ui.setButtonBusy(button, true, `Preparando parte ${index + 1}…`);
+            status.textContent = `Preparando la parte ${index + 1}/${plan.groups.length}. Mantén abierta esta página.`;
+            const zip = await buildPart(plan, index);
+            if (!modal.isConnected) return;
+            const filename = `inventario-${date}-parte-${String(index + 1).padStart(3, '0')}-de-${String(plan.groups.length).padStart(3, '0')}.zip`;
+            triggerDownload(zip, filename);
+            nextPart += 1;
+            status.textContent = `Descarga iniciada: ${filename} (${(zip.size / (1024 * 1024)).toFixed(1)} MB). Comprueba que aparezca en Descargas.`;
+            App.ui.setButtonBusy(button, false);
+            if (nextPart < plan.groups.length) {
+              button.textContent = `⬇️ Descargar parte ${nextPart + 1} de ${plan.groups.length}`;
+            } else {
+              button.disabled = true;
+              button.textContent = '✅ Todas las partes preparadas';
+              status.textContent += ' Conserva todas las partes y prueba a restaurar en una instalación de prueba.';
+            }
+          } catch (error) {
+            console.error('Error al exportar ZIP:', error);
+            status.textContent = `❌ ${error.message || 'No se pudo preparar la parte'}. No borres los datos originales.`;
+            App.ui.setButtonBusy(button, false);
+          }
+        });
+      }
+    });
+  }
+
+  async function zipIndex(file) {
+    const n = Math.min(file.size, 65557);
+    const tail = new DataView(await file.slice(file.size - n).arrayBuffer());
+    let end = -1;
+    for (let i = n - 22; i >= 0; i--) {
+      if (tail.getUint32(i, true) === 0x06054b50) { end = i; break; }
+    }
+    if (end === -1) throw new Error(`${file.name}: ZIP incompleto.`);
+    const length = tail.getUint32(end + 12, true);
+    const offset = tail.getUint32(end + 16, true);
+    const count = tail.getUint16(end + 10, true);
+    if (length > 10 * 1024 * 1024 || offset + length > file.size || count > 10000) throw new Error('Índice ZIP inválido.');
+    const data = new DataView(await file.slice(offset, offset + length).arrayBuffer());
+    const entries = new Map();
+    let position = 0;
+    for (let k = 0; k < count; k++) {
+      if (position + 46 > data.byteLength || data.getUint32(position, true) !== 0x02014b50) throw new Error('Índice ZIP dañado.');
+      const method = data.getUint16(position + 10, true);
+      const checksum = data.getUint32(position + 16, true);
+      const compressed = data.getUint32(position + 20, true);
+      const size = data.getUint32(position + 24, true);
+      const nameLen = data.getUint16(position + 28, true);
+      const extraLen = data.getUint16(position + 30, true);
+      const commentLen = data.getUint16(position + 32, true);
+      const localOffset = data.getUint32(position + 42, true);
+      if (position + 46 + nameLen + extraLen + commentLen > data.byteLength) throw new Error('ZIP truncado.');
+      const name = decoder.decode(new Uint8Array(data.buffer, position + 46, nameLen));
+      if (method !== 0 || compressed !== size) throw new Error('Este ZIP usa una compresión no compatible.');
+      if (entries.has(name)) throw new Error('El ZIP tiene entradas duplicadas.');
+      entries.set(name, { size, checksum, localOffset, file });
+      position += 46 + nameLen + extraLen + commentLen;
+    }
+    return entries;
+  }
+
+  async function entryBlob(index, name) {
+    const row = index.get(name);
+    if (!row) throw new Error(`Falta ${name} en una de las partes del respaldo.`);
+    const header = new DataView(await row.file.slice(row.localOffset, row.localOffset + 30).arrayBuffer());
+    if (header.byteLength !== 30 || header.getUint32(0, true) !== 0x04034b50) throw new Error('Cabecera ZIP dañada.');
+    const start = row.localOffset + 30 + header.getUint16(26, true) + header.getUint16(28, true);
+    if (start + row.size > row.file.size) throw new Error('Archivo ZIP cortado.');
+    return row.file.slice(start, start + row.size);
+  }
+
+  async function readJson(index, name) {
+    const blob = await entryBlob(index, name);
+    if (blob.size > 12 * 1024 * 1024 || await crc32(blob) !== index.get(name).checksum) {
+      throw new Error(`Metadatos dañados: ${name}.`);
+    }
+    try { return JSON.parse(await blob.text()); }
+    catch (_) { throw new Error(`${name} no contiene un JSON válido.`); }
+  }
+
+  function checkManifest(meta) {
+    if (!meta || meta.format !== 'mi-inventario-zip-partes' || meta.version !== 2 ||
+        !meta.backupId || !Number.isInteger(meta.partCount) || meta.partCount < 1 ||
+        !Array.isArray(meta.images) || !Array.isArray(meta.products) || !Array.isArray(meta.folders) ||
+        !meta.settings?.adminPasswordHash) throw new Error('Respaldo ZIP inválido o incompleto.');
+    const ids = new Set();
+    for (const f of meta.folders) {
+      if (!f.id || !String(f.name || '').trim() || ids.has(f.id)) throw new Error('Carpetas inválidas en respaldo.');
+      ids.add(f.id);
+    }
+    const products = new Set(), codes = new Set();
+    for (const p of meta.products) {
+      if (!p.id || products.has(p.id) || !ids.has(p.folderId) || !String(p.name || '').trim() || !String(p.code || '').trim()) throw new Error('Productos inválidos en el respaldo.');
+      products.add(p.id);
+      const key = `${p.folderId}::${App.utils.normalize(p.code)}`;
+      if (codes.has(key)) throw new Error('Códigos de lámina duplicados.');
+      codes.add(key);
+      p.codeKey = App.utils.normalize(p.code);
+      p.stock = Math.max(0, parseInt(p.stock, 10) || 0);
+    }
+    const images = new Set();
+    for (const item of meta.images) {
+      if (!item.id || images.has(item.id) || !Number.isInteger(item.part) || item.part < 1 || item.part > meta.partCount ||
+        !(item.size > 0) || item.size > 1024 * 1024 * 512) throw new Error('Imágenes inválidas en respaldo.');
+      images.add(item.id);
+    }
+    for (const p of meta.products) {
+      if (p.imageId && !images.has(p.imageId)) throw new Error('Faltan imágenes asociadas a láminas.');
+    }
+    if (!/^[a-f0-9]{64}$/i.test(meta.settings.adminPasswordHash)) throw new Error('Contraseña guardada inválida.');
+    if (meta.settings.clientFolderId && !ids.has(meta.settings.clientFolderId)) meta.settings.clientFolderId = null;
+    meta.settings = {
+      ...App.DEFAULT_SETTINGS, ...meta.settings,
+      lowStockLimit: App.utils.clampInt(meta.settings.lowStockLimit, 0, 999999),
+      autoClientMode: Boolean(meta.settings.autoClientMode)
+    };
+  }
+
+  async function inspectZipFiles(files) {
+    if (!files.length || files.some((file) => !/\.zip$/i.test(file.name))) {
+      throw new Error('Selecciona todos los ZIP de una misma copia de seguridad.');
+    }
+    const indexes = await Promise.all(files.map(async (file) => ({ file, index: await zipIndex(file) })));
+    const first = indexes.find((p) => p.index.has('inventario.json'));
+    if (!first) throw new Error('Falta la parte 001 del respaldo, que contiene inventario.json.');
+    const manifest = await readJson(first.index, 'inventario.json');
+    checkManifest(manifest);
+    const lookup = new Map([[1, first.index]]);
+    for (const item of indexes) {
+      if (item === first) continue;
+      const info = await readJson(item.index, 'parte.json');
+      if (info.format !== manifest.format || info.version !== 2 || info.backupId !== manifest.backupId ||
+          info.partCount !== manifest.partCount || !Number.isInteger(info.part) || info.part < 2 || info.part > manifest.partCount ||
+          lookup.has(info.part)) throw new Error('Hay partes duplicadas o de copias distintas.');
+      lookup.set(info.part, item.index);
+    }
+    if (lookup.size !== manifest.partCount) throw new Error(`Seleccionaste ${lookup.size} de ${manifest.partCount} partes. Selecciónalas todas juntas.`);
+    for (const info of manifest.images) {
+      const entry = lookup.get(info.part)?.get(`imagenes/${encodeURIComponent(String(info.id))}.bin`);
+      if (!entry || entry.size !== info.size) throw new Error(`Falta la imagen ${info.id} en el respaldo.`);
+    }
+    return { manifest, lookup };
+  }
+
+  async function handleZipFiles(files) {
+    const { manifest, lookup } = await inspectZipFiles(files);
+    const yes = await App.ui.confirmDialog({
+      title: 'Restaurar respaldo ZIP',
+      message: `Se verificaron ${manifest.partCount} partes. Incluyen ${manifest.folders.length} carpetas, ${manifest.products.length} láminas y ${manifest.images.length} imágenes.`,
+      warning: 'ATENCIÓN: restaurar REEMPLAZARÁ los datos actuales. Hazlo primero en una instalación de prueba.',
+      confirmText: 'Sí, reemplazar datos'
+    });
+    if (!yes) return;
+    App.ui.toast('⏳ Importando imágenes. No cierres la aplicación.', 'warning');
+    await App.db.clear('restoreStageImages');
+    for (let i = 0; i < manifest.images.length; i++) {
+      const info = manifest.images[i];
+      const index = lookup.get(info.part);
+      const filename = `imagenes/${encodeURIComponent(String(info.id))}.bin`;
+      const imageBlob = await entryBlob(index, filename);
+      if (await crc32(imageBlob) !== index.get(filename).checksum) {
+        throw new Error(`La imagen ${info.id} está dañada. No se modificaron tus datos anteriores.`);
+      }
+      // Recrear Blob estable: Android puede invalidar Blobs ligados al selector de archivos.
+      const stable = new Blob([await imageBlob.arrayBuffer()], { type: info.type || 'image/jpeg' });
+      await App.db.put('restoreStageImages', {
+        id: info.id, blob: stable, type: info.type || 'image/jpeg',
+        name: info.name || 'imagen', createdAt: info.createdAt || App.utils.now()
+      });
+      if (i % 50 === 0 && i > 0) console.info(`Restaurando imagen ${i}/${manifest.images.length}`);
+    }
+    await App.db.commitStagedRestore(manifest);
+    App.state.settings = manifest.settings;
+    App.state.currentFolderId = null;
+    App.utils.revokeObjectUrls();
+    App.app.applyBranding();
+    App.state.currentMode = 'admin';
+    App.ui.showScreen('adminScreen');
+    await App.app.refreshAdmin();
+    App.ui.toast(`✅ Restauración completa: ${manifest.products.length} láminas`, 'success');
+  }
+
+  // Inspección de todas las partes e integridad CRC sin tocar IndexedDB.
+  async function verifyZipFiles(files) {
+    App.ui.openModal({
+      eyebrow: 'Validación segura',
+      title: 'Comprobar copia de seguridad',
+      bodyHtml: '<div class="backup-status" id="verifyBackupStatus" role="status">Revisando archivos ZIP… No cierres esta ventana.</div>',
+      footerHtml: '<button class="btn btn--secondary" type="button" data-verify-close>Cerrar</button>',
+      closeOnBackdrop: false,
+      onReady(modal) {
+        modal.querySelector('[data-verify-close]').addEventListener('click', App.ui.closeModal);
+        (async () => {
+          const status = modal.querySelector('#verifyBackupStatus');
+          const { manifest, lookup } = await inspectZipFiles(files);
+          status.textContent = `Copia encontrada: ${manifest.folders.length} carpetas, ${manifest.products.length} láminas y ${manifest.images.length} imágenes. Verificando integridad…`;
+          for (let i = 0; i < manifest.images.length; i++) {
+            if (!modal.isConnected) return; // El usuario canceló la verificación.
+            const info = manifest.images[i];
+            const name = `imagenes/${encodeURIComponent(String(info.id))}.bin`;
+            const index = lookup.get(info.part);
+            const blob = await entryBlob(index, name);
+            if (await crc32(blob) !== index.get(name).checksum) {
+              throw new Error(`La imagen ${info.name || info.id} está dañada.`);
+            }
+            if (i % 25 === 0 || i + 1 === manifest.images.length) {
+              status.textContent = `Comprobando imagen ${i + 1} de ${manifest.images.length}… Mantén abierta esta ventana.`;
+            }
+          }
+          if (!modal.isConnected) return;
+          status.innerHTML = `<strong>✅ Respaldo comprobado correctamente.</strong>
+            <p>${manifest.folders.length} carpetas · ${manifest.products.length} láminas · ${manifest.images.length} imágenes · ${manifest.partCount} parte(s).</p>
+            <p>Se verificó la integridad de los archivos ZIP. <strong>No se reemplazó ningún dato.</strong> Conserva TODAS las partes y realiza una restauración de prueba antes de actualizar la tablet original.</p>`;
+        })().catch((error) => {
+          console.error('Error al verificar copia de seguridad:', error);
+          if (!modal.isConnected) return;
+          modal.querySelector('#verifyBackupStatus').textContent = `❌ No se pudo verificar: ${error.message || 'ZIP incompleto o dañado'}. No borres ningún dato.`;
+        });
+      }
+    });
+  }
+
+  function chooseVerifyFiles() {
+    const input = App.ui.el('verifyBackupFileInput');
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }
+
+  function bindVerifyInput() {
+    const input = App.ui.el('verifyBackupFileInput');
+    if (!input) return;
+    input.addEventListener('change', async () => {
+      const files = [...(input.files || [])];
+      input.value = '';
+      if (!files.length) return;
+      await verifyZipFiles(files);
+    });
+  }
+
+  App.backup.chooseVerifyFiles = chooseVerifyFiles;
+  App.backup.bindVerifyInput = bindVerifyInput;
+  App.backup.verifyZipFiles = verifyZipFiles;
+  App.backup.openZipBackupModal = openZipBackupModal;
+  App.backup.handleZipFiles = handleZipFiles;
+})();
+
+
+==================================================================
 js/app.js
-================================================================================
+==================================================================
 // ========================================
 // APLICACIÓN PRINCIPAL
 // ========================================
@@ -1836,6 +2608,7 @@ js/app.js
   const App = window.InventoryApp;
   const viewCache = {
     folders: [],
+    clientFolders: [],
     currentProducts: [],
     clientProducts: []
   };
@@ -1858,9 +2631,6 @@ js/app.js
     const totalUnits = products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0);
     const low = products.filter((product) => product.stock > 0 && product.stock <= threshold).length;
     const out = products.filter((product) => product.stock <= 0).length;
-    const assigned = App.state.settings.clientFolderId
-      ? folders.find((folder) => folder.id === App.state.settings.clientFolderId)
-      : null;
 
     const cards = [
       ['📁', folders.length, 'Total de carpetas'],
@@ -1871,19 +2641,40 @@ js/app.js
     ];
 
     const target = App.ui.el('dashboardCards');
-    target.innerHTML = cards.map(([icon, value, label]) => `
-      <article class="stat-card">
+    target.innerHTML = cards.map(([icon, value, label], index) => `
+      ${index >= 3 ? `<button type="button" class="stat-card stat-card--interactive" data-action="stock-report" data-kind="${index === 3 ? 'low' : 'out'}" aria-label="Ver detalle: ${label}">` : '<article class="stat-card">'}
         <span class="stat-card__icon">${icon}</span>
         <strong class="stat-card__value">${value}</strong>
-        <div class="stat-card__label">${label}</div>
-      </article>
-    `).join('') + `
-      <article class="stat-card stat-card--wide">
-        <span class="stat-card__icon">👤</span>
-        <strong class="stat-card__value" style="font-size:1.05rem">${assigned ? App.utils.escapeHtml(assigned.name) : 'Sin asignar'}</strong>
-        <div class="stat-card__label">Carpeta actualmente asignada al cliente</div>
-      </article>
-    `;
+        <div class="stat-card__label">${label}${index >= 3 ? ' · Ver detalle ›' : ''}</div>
+      ${index >= 3 ? '</button>' : '</article>'}
+    `).join('');
+  }
+
+  async function showStockReport(kind) {
+    const [folders, products] = await Promise.all([App.folders.list(), App.db.getAll('products')]);
+    const limit = App.state.settings.lowStockLimit;
+    const matches = (p) => kind === 'out' ? Number(p.stock) <= 0 : Number(p.stock) > 0 && Number(p.stock) <= limit;
+    const groups = folders.map((folder) => ({
+      folder,
+      rows: products.filter((p) => p.folderId === folder.id && matches(p))
+        .sort((a, b) => String(a.name).localeCompare(String(b.name), 'es'))
+    })).filter((group) => group.rows.length);
+    const total = groups.reduce((count, group) => count + group.rows.length, 0);
+    const title = kind === 'out' ? 'Láminas sin stock' : 'Láminas con stock bajo';
+    App.ui.openModal({
+      title: `${title} (${total})`, eyebrow: 'Resumen por carpeta',
+      bodyHtml: total ? `<p class="form-hint">${groups.length} carpetas afectadas · Pulsa una carpeta para ver sus láminas.</p>` +
+        groups.map(({ folder, rows }) => `
+          <details class="stock-report-group" open>
+            <summary><span>📁 ${App.utils.escapeHtml(folder.name)}</span><strong>${rows.length} lámina${rows.length === 1 ? '' : 's'}</strong></summary>
+            <div class="stock-report-list">${rows.map((p) => `
+              <div class="stock-report-row"><div><strong>${App.utils.escapeHtml(p.name)}</strong><small>${App.utils.escapeHtml(p.code)}</small></div>
+              <span class="stock-badge stock-badge--${kind === 'out' ? 'out' : 'low'}">${p.stock} unidad${Number(p.stock) === 1 ? '' : 'es'}</span></div>
+            `).join('')}</div>
+          </details>`).join('') : '<p>✅ No hay láminas en este estado.</p>',
+      footerHtml: '<button class="btn btn--secondary" type="button" data-modal-close-report>Cerrar</button>',
+      onReady(modal) { modal.querySelector('[data-modal-close-report]').addEventListener('click', App.ui.closeModal); }
+    });
   }
 
   function renderFoldersFromCache() {
@@ -2010,12 +2801,11 @@ js/app.js
 
   function filterAndSortCurrentProducts() {
     const query = App.utils.normalize(App.ui.el('productSearchInput')?.value || '');
-    const sort = App.ui.el('productSortSelect')?.value || 'name-asc';
     const filtered = viewCache.currentProducts.filter((product) => {
       if (!query) return true;
       return App.utils.normalize(product.name).includes(query) || App.utils.normalize(product.code).includes(query);
     });
-    return App.products.sortProducts(filtered, sort);
+    return App.products.sortProducts(filtered);
   }
 
   async function renderCurrentProducts() {
@@ -2040,30 +2830,72 @@ js/app.js
     await refreshAdmin();
   }
 
-  async function enterClient() {
-    const folderId = App.state.settings.clientFolderId;
-    if (!folderId) {
-      App.ui.toast('⚠️ Todavía no se ha configurado una carpeta para el cliente.', 'warning');
-      if (App.state.currentMode === 'loading') await showStart();
-      return false;
+  // El mostrario del cliente es una segunda vista de TODAS las carpetas.
+  // No exige asignaciones ni permite crear, renombrar o borrar.
+  function renderClientFoldersFromCache() {
+    const target = App.ui.el('clientFolderGrid');
+    const query = App.utils.normalize(App.ui.el('clientFolderSearchInput')?.value || '');
+    const folders = viewCache.clientFolders.filter((folder) =>
+      !query || App.utils.normalize(folder.name).includes(query)
+    );
+    if (!folders.length) {
+      target.innerHTML = query
+        ? App.ui.emptyState('🔎', 'Sin resultados', 'No encontramos carpetas con esa búsqueda.')
+        : App.ui.emptyState('📁', 'Sin carpetas todavía', 'El administrador aún no ha añadido carpetas.');
+      return;
     }
+    target.innerHTML = folders.map((folder) => `
+      <article class="folder-card folder-card--readonly">
+        <div class="folder-card__main" data-action="open-client-folder" data-folder-id="${folder.id}" role="button" tabindex="0" aria-label="Abrir carpeta ${App.utils.escapeHtml(folder.name)}">
+          <div class="folder-card__icon">📁</div>
+          <h3>${App.utils.escapeHtml(folder.name)}</h3>
+          <p>Ver láminas de esta carpeta ›</p>
+          <div class="folder-meta">
+            <span>📦 ${folder.productCount} producto${folder.productCount === 1 ? '' : 's'}</span>
+            <span>🔢 ${folder.totalUnits} unidad${folder.totalUnits === 1 ? '' : 'es'}</span>
+          </div>
+        </div>
+      </article>
+    `).join('');
+  }
 
+  async function refreshClientFolders() {
+    viewCache.clientFolders = await App.folders.listWithSummaries();
+    renderClientFoldersFromCache();
+  }
+
+  async function enterClient() {
+    App.state.currentMode = 'client-folders';
+    App.state.currentFolderId = null;
+    App.utils.revokeObjectUrls();
+    App.ui.el('clientFolderSearchInput').value = '';
+    App.ui.showScreen('clientFoldersScreen');
+    await refreshClientFolders();
+    return true;
+  }
+
+  async function openClientFolder(folderId) {
+    if (App.state.currentMode !== 'client-folders') return;
     const folder = await App.folders.get(folderId);
     if (!folder) {
-      App.state.settings.clientFolderId = null;
-      await App.db.setConfig('settings', App.state.settings);
-      App.ui.toast('⚠️ La carpeta del cliente ya no existe. Configúrala nuevamente.', 'warning');
-      await showStart();
-      return false;
+      App.ui.toast('⚠️ La carpeta ya no existe', 'warning');
+      await refreshClientFolders();
+      return;
     }
-
     App.state.currentMode = 'client';
-    App.state.currentFolderId = folderId;
+    App.state.currentFolderId = folder.id;
     App.ui.el('clientFolderTitle').textContent = folder.name;
     App.ui.el('clientSearchInput').value = '';
     App.ui.showScreen('clientScreen');
     await refreshClient();
-    return true;
+  }
+
+  async function backToClientFolders() {
+    App.state.currentMode = 'client-folders';
+    App.state.currentFolderId = null;
+    App.utils.revokeObjectUrls();
+    App.ui.showScreen('clientFoldersScreen');
+    await refreshClientFolders();
   }
 
   function filterClientProducts() {
@@ -2071,7 +2903,7 @@ js/app.js
     return App.products.sortProducts(viewCache.clientProducts.filter((product) => {
       if (!query) return true;
       return App.utils.normalize(product.name).includes(query) || App.utils.normalize(product.code).includes(query);
-    }), 'name-asc');
+    }));
   }
 
   async function renderClientProducts() {
@@ -2079,10 +2911,9 @@ js/app.js
   }
 
   async function refreshClient() {
-    if (!App.state.settings.clientFolderId) return showStart();
-    const folder = await App.folders.get(App.state.settings.clientFolderId);
-    if (!folder) return showStart();
-    App.state.currentFolderId = folder.id;
+    if (App.state.currentMode !== 'client' || !App.state.currentFolderId) return;
+    const folder = await App.folders.get(App.state.currentFolderId);
+    if (!folder) return backToClientFolders();
     App.ui.el('clientFolderTitle').textContent = folder.name;
     viewCache.clientProducts = await App.products.listByFolder(folder.id);
     await renderClientProducts();
@@ -2110,6 +2941,12 @@ js/app.js
 
   async function handleAction(actionElement) {
     const action = actionElement.dataset.action;
+    const adminOnly = new Set([
+      'open-settings', 'create-folder', 'rename-folder', 'delete-folder',
+      'open-folder', 'create-product', 'edit-product', 'delete-product',
+      'stock-plus', 'stock-minus', 'back-admin', 'stock-report'
+    ]);
+    if (adminOnly.has(action) && !['admin', 'folder'].includes(App.state.currentMode)) return;
     switch (action) {
       case 'enter-client':
         await enterClient();
@@ -2136,6 +2973,17 @@ js/app.js
       case 'open-folder':
         await openFolder(actionElement.dataset.folderId);
         break;
+      case 'open-client-folder':
+        await openClientFolder(actionElement.dataset.folderId);
+        break;
+      case 'back-client-folders':
+        await backToClientFolders();
+        break;
+      case 'clear-client-folder-search':
+        App.ui.el('clientFolderSearchInput').value = '';
+        renderClientFoldersFromCache();
+        App.ui.el('clientFolderSearchInput').focus();
+        break;
       case 'back-admin':
         App.state.currentMode = 'admin';
         App.state.currentFolderId = null;
@@ -2158,6 +3006,17 @@ js/app.js
       case 'stock-minus':
         await changeStock(actionElement.dataset.productId, -1, actionElement);
         break;
+      case 'view-image':
+        if (['folder', 'client'].includes(App.state.currentMode)) {
+          const product = await App.products.get(actionElement.dataset.productId);
+          if (product?.folderId === App.state.currentFolderId) {
+            await App.products.openImageViewer(product.id);
+          }
+        }
+        break;
+      case 'stock-report':
+        if (App.state.currentMode === 'admin') await showStockReport(actionElement.dataset.kind);
+        break;
       case 'clear-folder-search':
         App.ui.el('folderSearchInput').value = '';
         renderFoldersFromCache();
@@ -2178,6 +3037,59 @@ js/app.js
     }
   }
 
+  function bindProductReordering() {
+    const grid = App.ui.el('productGrid');
+    let drag = null;
+    grid.addEventListener('pointerdown', (event) => {
+      const handle = event.target.closest('[data-reorder-handle]');
+      if (!handle || App.state.currentMode !== 'folder') return;
+      if (App.ui.el('productSearchInput').value.trim()) {
+        App.ui.toast('⚠️ Borra la búsqueda para ordenar todas las láminas.', 'warning');
+        return;
+      }
+      const card = handle.closest('[data-product-id]');
+      if (!card) return;
+      event.preventDefault();
+      drag = { id: event.pointerId, card, handle, changed: false };
+      handle.setPointerCapture(event.pointerId);
+      card.classList.add('product-card--dragging');
+    });
+    grid.addEventListener('pointermove', (event) => {
+      if (!drag || drag.id !== event.pointerId) return;
+      event.preventDefault();
+      const other = document.elementFromPoint(event.clientX, event.clientY)?.closest('#productGrid > .product-card');
+      if (other && other !== drag.card) {
+        const rect = other.getBoundingClientRect();
+        const before = event.clientY < rect.top + rect.height / 2 ||
+          (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height / 2 && event.clientX < rect.left + rect.width / 2);
+        grid.insertBefore(drag.card, before ? other : other.nextSibling);
+        drag.changed = true;
+      }
+      if (event.clientY > window.innerHeight - 85) window.scrollBy(0, 13);
+      else if (event.clientY < 85) window.scrollBy(0, -13);
+    });
+    async function endDrag(event) {
+      if (!drag || drag.id !== event.pointerId) return;
+      const current = drag;
+      drag = null;
+      current.card.classList.remove('product-card--dragging');
+      try { if (current.handle.hasPointerCapture(event.pointerId)) current.handle.releasePointerCapture(event.pointerId); } catch (_) {}
+      if (!current.changed) return;
+      try {
+        const ids = [...grid.querySelectorAll(':scope > .product-card')].map((node) => node.dataset.productId);
+        await App.products.setCustomOrder(App.state.currentFolderId, ids);
+        await refreshCurrentFolder();
+        App.ui.toast('✅ Orden guardado', 'success');
+      } catch (error) {
+        console.error('Error al guardar el orden:', error);
+        App.ui.toast('❌ No se pudo guardar el orden', 'error');
+        await refreshCurrentFolder();
+      }
+    }
+    grid.addEventListener('pointerup', (event) => { endDrag(event).catch(console.error); });
+    grid.addEventListener('pointercancel', (event) => { endDrag(event).catch(console.error); });
+  }
+
   function bindEvents() {
     document.addEventListener('click', async (event) => {
       const actionElement = event.target.closest('[data-action]');
@@ -2190,17 +3102,24 @@ js/app.js
     });
 
     document.addEventListener('keydown', async (event) => {
-      if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[data-action="open-folder"][role="button"]')) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const action = event.target?.dataset?.action;
+      if (action === 'open-folder' && App.state.currentMode === 'admin') {
         event.preventDefault();
         await openFolder(event.target.dataset.folderId);
+      } else if (action === 'open-client-folder' && App.state.currentMode === 'client-folders') {
+        event.preventDefault();
+        await openClientFolder(event.target.dataset.folderId);
       }
     });
 
     App.ui.el('folderSearchInput').addEventListener('input', renderFoldersFromCache);
+    App.ui.el('clientFolderSearchInput').addEventListener('input', renderClientFoldersFromCache);
     App.ui.el('productSearchInput').addEventListener('input', () => renderCurrentProducts().catch(console.error));
-    App.ui.el('productSortSelect').addEventListener('change', () => renderCurrentProducts().catch(console.error));
+    bindProductReordering();
     App.ui.el('clientSearchInput').addEventListener('input', () => renderClientProducts().catch(console.error));
     App.backup.bindRestoreInput();
+    App.backup.bindVerifyInput();
 
     window.addEventListener('beforeunload', () => App.utils.revokeObjectUrls());
   }
@@ -2214,7 +3133,7 @@ js/app.js
       bindEvents();
       App.state.initialized = true;
 
-      if (App.state.settings.autoClientMode && App.state.settings.clientFolderId) {
+      if (App.state.settings.autoClientMode) {
         const entered = await enterClient();
         if (!entered) await showStart();
       } else {
@@ -2242,6 +3161,7 @@ js/app.js
     applyBranding,
     refreshAdmin,
     refreshCurrentFolder,
+    refreshClientFolders,
     refreshClient,
     enterAdmin,
     enterClient,
@@ -2250,25 +3170,4 @@ js/app.js
 
   document.addEventListener('DOMContentLoaded', initialize, { once: true });
 })();
-
-
-================================================================================
-README.txt
-================================================================================
-MI INVENTARIO
-=============
-
-Inicio rápido
--------------
-1. Mantén la estructura de carpetas tal como está.
-2. Abre index.html con Google Chrome o Microsoft Edge.
-3. Contraseña inicial del administrador: 1234
-4. Los datos se guardan localmente en IndexedDB del navegador.
-5. Usa Configuración > Crear copia de seguridad para exportar tus datos a JSON.
-
-Importante
-----------
-- No borres los datos del sitio/navegador si quieres conservar el inventario local.
-- Cada navegador/perfil mantiene su propia base de datos local.
-- La contraseña controla el acceso dentro de esta aplicación local; no sustituye la seguridad de un servidor.
 
